@@ -8,13 +8,13 @@ VertexArray::VertexArray() {
 }
 
 VertexArray::~VertexArray() {
-	glDeleteVertexArrays(1, m_rendererId);
+	glDeleteVertexArrays(1, &m_rendererId);
 }
 
-VertexArray::Bind() {
+void VertexArray::Bind() {
 	glBindVertexArray(m_rendererId);
 }
 
-VertexArray::Unbind() {
+void VertexArray::Unbind() {
 	glBindVertexArray(0);
 }
