@@ -90,14 +90,18 @@ static unsigned int CompileShader(unsigned int type, const std::string source)
 	glGetShaderiv(id, GL_COMPILE_STATUS, &result);
 	if (result == GL_FALSE) 
 	{
+		// Check if the shader compiled succesfully. Otherwise stop execution
 		int len;
 		glGetShaderiv(id, GL_INFO_LOG_LENGTH, &len);
 		char *message = (char*)alloca(len * sizeof(char));
 		glGetShaderInfoLog(id, len, &len, message);
 
-		std::cout << "Failed to compile shader" << std::endl;
+		std::cout << "Fatal Error: Unable to compile shader\n";
 		std::cout << message << std::endl;
+
 		glDeleteShader(id);
+
+		exit(1);
 	}
 
 	return id;
@@ -157,32 +161,46 @@ int main() {
 	glEnable (GL_DEBUG_OUTPUT);
 	glDebugMessageCallback (GLErrorCallback, 0);
 
-	float positions[12] = {
+	float positions[] = {
 		-0.5, 0.5f, // 0
 		-0.5f, -0.5f, // 1
 		0.5f, -0.5f, // 2
-		0.5f, 0.5f // 3
+		0.5f, 0.5f, // 3
+		1.0, 0.5, // 4
+		1.0, -0.5, // 5
+		2.0, 0.0 // 6
 	};
 
+
 	unsigned int indices[] = {
-		0, 1, 2,
-		2, 3, 0
+		0, 2, 4
+	};
+
+	unsigned int indices_2[] = {
+		3, 4, 5,
+		2, 3, 6
 	};
 
 	ShaderProgramSource program_src = ParseShader("./shaders/basic.shader");
 	unsigned int shader = CreateShader(program_src.vertex_source, program_src.fragment_source);
 	glUseProgram(shader);
 
-	unsigned int vao;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
 
-	VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+	VertexArray vao;
+	vao.Bind();
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
+	VertexBuffer vb(positions, sizeof(positions));
+	
+	vao.AddVertexBuffer(&vb);
+	vao.AddVertexAttrib(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), 0);
 
-	IndexBuffer ib(indices, 6);
+
+	vao.Unbind();
+
+	IndexBuffer ib(indices, sizeof(indices) / sizeof(unsigned int));
+	IndexBuffer ib_2(indices_2, sizeof(indices_2) / sizeof(unsigned int));
+
+	std::vector<IndexBuffer*> index_vect = {&ib, &ib_2};
 
 	glBindVertexArray(0);
 	glUseProgram(0);
@@ -193,15 +211,14 @@ int main() {
 	{
 		double cur_time = glfwGetTime();
 		glUseProgram(shader);
-		glBindVertexArray(vao);
 
-		ib.Bind();
+		vao.Bind(); // Bind vertex array to get state ready
 
 		int offset_uniform = glGetUniformLocation(shader, "pos_offset");
-		glUniform4f(offset_uniform, std::cos(3 * cur_time), std::sin(3 * cur_time), 0.0, 1);
+		glUniform4f(offset_uniform, std::cos(3 * cur_time), std::sin(3 * cur_time), 0.0, std::sin(5 * cur_time) + 1);
 
 		int rotation_uniform = glGetUniformLocation(shader, "rotation");
-		float theta = 10 * cur_time;
+		float theta = 0 * cur_time;
 		float rot_mat[2][2] = {
 			{std::cos(theta), -1 * std::sin(theta)},
 			{std::sin(theta), std::cos(theta)}
@@ -209,13 +226,20 @@ int main() {
 		glUniformMatrix2fv(rotation_uniform, 1, GL_TRUE, (float*)rot_mat);
 
 		int color_uniform = glGetUniformLocation(shader, "my_color");
-		glUniform4f(color_uniform, 0.5 * std::sin(9 * cur_time) + 0.5, 0.5 * std::sin(10 * cur_time) + 0.5, 0.0f, 1.0f);
+		glUniform4f(color_uniform, 0.5 * std::sin(5 * cur_time) + 0.5, 0.5 * std::sin(10 * cur_time) + 0.5, 0.5, 1.0f);
+
 
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+		glDrawElements(GL_TRIANGLES, ib_2.GetCount(), GL_UNSIGNED_INT, nullptr);
 
-		// glDrawElements(GL_TRIANGLES, 3...) read documetation
+		for (int i = 0; i < index_vect.size(); i++) {
+			index_vect[i]->Bind();
+			glDrawElements(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr);
+		}
+
+
+		//glDrawElements(GL_TRIANGLES, 3...) read documetation
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
