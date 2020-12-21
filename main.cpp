@@ -98,8 +98,7 @@ static unsigned int CompileShader(unsigned int type, const std::string source)
 
 		std::cout << "Fatal Error: Unable to compile shader\n";
 		std::cout << message << std::endl;
-
-		glDeleteShader(id);
+glDeleteShader(id);
 
 		exit(1);
 	}
@@ -218,7 +217,7 @@ int main() {
 		glUniform4f(offset_uniform, std::cos(3 * cur_time), std::sin(3 * cur_time), 0.0, std::sin(5 * cur_time) + 1);
 
 		int rotation_uniform = glGetUniformLocation(shader, "rotation");
-		float theta = 0 * cur_time;
+		float theta = 5 * cur_time;
 		float rot_mat[2][2] = {
 			{std::cos(theta), -1 * std::sin(theta)},
 			{std::sin(theta), std::cos(theta)}
